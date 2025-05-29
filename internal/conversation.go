@@ -1,3 +1,16 @@
+// Copyright 2025 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//	http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 package internal
 
 import (
@@ -122,7 +135,11 @@ func (doc *Document) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 //go:embed systemprompt.txt
 var systemPrompt string
 
-// repl is a read-eval-print loop for the chat session.
+// Repl starts the REPL (Read-Eval-Print Loop) for the BubbleChat application.
+// It initializes the chat client, sets up the conversation history,
+// and starts the BubbleTea program to handle user input and display the conversation.
+// It's expected that outside of initializing the client you will not need to do
+// anything to have an interactive session.
 func Repl(ctx context.Context, client gollm.Client) error {
 	llmChat := gollm.NewRetryChat(
 		client.StartChat(systemPrompt, "gemini-2.0-flash"),

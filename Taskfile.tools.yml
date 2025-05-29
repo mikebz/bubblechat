@@ -1,0 +1,17 @@
+version: '3'
+
+tasks:
+  golangci-lint:
+    desc: "Install golangci-lint if not already installed"
+    status:
+      # The command `command -v golangci-lint` checks if the golangci-lint tool is available in the system's PATH.
+      - command -v golangci-lint
+    cmds:
+      # The command `go install` installs the latest version of golangci-lint.
+      - go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+    silent: true
+
+  default:
+    desc: "List available tool tasks"
+    cmds:
+      - task --list

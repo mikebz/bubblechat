@@ -1,0 +1,49 @@
+version: '3'
+
+includes:
+  tools: ./Taskfile.tools.yml
+
+tasks:
+  default:
+    desc: Show help for available tasks
+    cmds:
+      - task --list
+        
+  build:
+    desc: Build the BubbleChat application
+    cmds:
+      # Ensure the build directory exists
+      - command -v go || (echo "Go is not installed. Please install Go to build the application." && exit 1)
+      - mkdir -p ./build
+      - go build -o ./build/bubblechat ./cmd/bubblechat
+
+  run:
+    desc: Run the BubbleChat application
+    deps:
+      - build
+    cmds:
+      - ./build/bubblechat
+
+  test:
+    desc: Run unit tests for the BubbleChat application
+    cmds:
+      - go test ./...
+
+  lint:
+    desc: Run linters on the codebase
+    deps:
+      - task: tools:golangci-lint
+    cmds:
+      - golangci-lint run
+
+  clean:
+    desc: Clean up build artifacts
+    cmds:
+      - rm -rf ./build
+
+  all:
+    desc: Run all tasks (build, test, lint)
+    deps:
+      - build
+      - test
+      - lint

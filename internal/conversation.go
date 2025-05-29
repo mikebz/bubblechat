@@ -64,15 +64,15 @@ func Render(block Block) string {
 	var lgStyle lipgloss.Style
 	switch block.Type {
 	case ErrorBlock:
-		lgStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("red"))
+		lgStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#cc0000"))
 	case AgentBlock:
-		lgStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("lightblue"))
+		lgStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#729fcf"))
 	case UserBlock:
-		lgStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("white"))
+		lgStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#d3d7cf"))
 	case ToolBlock:
-		lgStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("yellow"))
+		lgStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#32afff"))
 	default:
-		lgStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("lightgray"))
+		lgStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#ad7fa8"))
 	}
 
 	return lgStyle.Render(block.Text)

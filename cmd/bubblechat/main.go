@@ -25,8 +25,6 @@ import (
 
 func main() {
 	// Start the chat session
-	fmt.Println("Welcome to BubbleChat! Type your message below:")
-
 	ctx := context.Background()
 	client, err := gollm.NewClient(ctx, "gemini")
 	if err != nil {

@@ -43,6 +43,16 @@ tasks:
     cmds:
       - rm -rf ./build
 
+  deps-update:
+    desc: Update Go module dependencies
+    cmds:
+      - go get -u ./...
+
+  mod-tidy:
+    desc: Run go mod tidy to ensure a consistent go.mod and go.sum
+    cmds:
+      - go mod tidy
+
   all:
     desc: Run all tasks (build, test, lint)
     deps:

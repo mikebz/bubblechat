@@ -49,9 +49,11 @@ tasks:
     desc: Run linters on the codebase
     deps:
       - task: tools:golangci-lint
+      - task: tools:addlicense
     cmds:
       - go fmt ./...
       - go vet ./...
+      - addlicense -check -v -c "Google LLC" -ignore ./vendor .
       - golangci-lint run
   
 

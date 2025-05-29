@@ -24,7 +24,19 @@ tasks:
       - go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
     silent: true
 
+  addlicense:
+    desc: "Install addlicense if not already installed"
+    status:
+      # The command `command -v addlicense` checks if the addlicense tool is available in the system's PATH.
+      - command -v addlicense
+    cmds:
+      # The command `go install` installs the latest version of addlicense.
+      - go install github.com/google/addlicense@latest
+    silent: true
+
   default:
     desc: "List available tool tasks"
     cmds:
       - task --list
+
+  

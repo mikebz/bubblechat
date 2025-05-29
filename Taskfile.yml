@@ -36,7 +36,10 @@ tasks:
     deps:
       - task: tools:golangci-lint
     cmds:
+      - go fmt ./...
+      - go vet ./...
       - golangci-lint run
+  
 
   clean:
     desc: Clean up build artifacts

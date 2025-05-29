@@ -4,6 +4,8 @@ includes:
   tools: ./Taskfile.tools.yml
 
 tasks:
+  env:
+    dotenv: ['.env']
   default:
     desc: Show help for available tasks
     cmds:

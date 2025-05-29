@@ -23,7 +23,60 @@ import (
 	"github.com/GoogleCloudPlatform/kubectl-ai/gollm"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 )
+
+//go:embed systemprompt.txt
+var systemPrompt string
+
+// Repl starts the REPL (Read-Eval-Print Loop) for the BubbleChat application.
+// It initializes the chat client, sets up the conversation history,
+// and starts the BubbleTea program to handle user input and display the conversation.
+// It's expected that outside of initializing the client you will not need to do
+// anything to have an interactive session.
+func Repl(ctx context.Context, client gollm.Client) error {
+	llmChat := gollm.NewRetryChat(
+		client.StartChat(systemPrompt, "gemini-2.0-flash"),
+		gollm.RetryConfig{
+			MaxAttempts:    3,
+			InitialBackoff: 10 * time.Second,
+			MaxBackoff:     60 * time.Second,
+			BackoffFactor:  2,
+			Jitter:         true,
+		},
+	)
+
+	doc := NewDoc(ctx, llmChat)
+
+	p := tea.NewProgram(doc)
+	if _, err := p.Run(); err != nil {
+		fmt.Printf("Error running program: %v\n", err)
+		return err
+	}
+
+	return nil
+}
+
+// Render formats a Block for display in the terminal.
+// It applies different styles based on the type of block (e.g., error, agent, user, tool).
+func Render(block Block) string {
+	// TODO: consider caching these styles
+	var lgStyle lipgloss.Style
+	switch block.Type {
+	case ErrorBlock:
+		lgStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("red"))
+	case AgentBlock:
+		lgStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("lightblue"))
+	case UserBlock:
+		lgStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("white"))
+	case ToolBlock:
+		lgStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("yellow"))
+	default:
+		lgStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("lightgray"))
+	}
+
+	return lgStyle.Render(block.Text)
+}
 
 // Document also contains visual elements in addition
 // to the conversation history datamodel.
@@ -94,18 +147,8 @@ func (doc *Document) Init() tea.Cmd {
 func (doc *Document) View() string {
 	var sb strings.Builder
 	for _, block := range doc.Blocks {
-		switch block.Type {
-		case ErrorBlock:
-			sb.WriteString(fmt.Sprintf("[Error] %s\n", block.Text))
-		case AgentBlock:
-			sb.WriteString(fmt.Sprintf("[Agent] %s\n", block.Text))
-		case UserBlock:
-			sb.WriteString(fmt.Sprintf("[User] %s\n", block.Text))
-		case ToolBlock:
-			sb.WriteString(fmt.Sprintf("[Tool] %s\n", block.Text))
-		default:
-			sb.WriteString(fmt.Sprintf("[Unknown] %s\n", block.Text))
-		}
+		sb.WriteString(Render(block))
+		sb.WriteString("\n")
 	}
 	sb.WriteString(doc.textInput.View())
 	sb.WriteString("\nPress Ctrl+C or Esc to exit.\n")
@@ -130,35 +173,4 @@ func (doc *Document) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	doc.textInput, cmd = doc.textInput.Update(msg)
 
 	return doc, cmd
-}
-
-//go:embed systemprompt.txt
-var systemPrompt string
-
-// Repl starts the REPL (Read-Eval-Print Loop) for the BubbleChat application.
-// It initializes the chat client, sets up the conversation history,
-// and starts the BubbleTea program to handle user input and display the conversation.
-// It's expected that outside of initializing the client you will not need to do
-// anything to have an interactive session.
-func Repl(ctx context.Context, client gollm.Client) error {
-	llmChat := gollm.NewRetryChat(
-		client.StartChat(systemPrompt, "gemini-2.0-flash"),
-		gollm.RetryConfig{
-			MaxAttempts:    3,
-			InitialBackoff: 10 * time.Second,
-			MaxBackoff:     60 * time.Second,
-			BackoffFactor:  2,
-			Jitter:         true,
-		},
-	)
-
-	doc := NewDoc(ctx, llmChat)
-
-	p := tea.NewProgram(doc)
-	if _, err := p.Run(); err != nil {
-		fmt.Printf("Error running program: %v\n", err)
-		return err
-	}
-
-	return nil
 }

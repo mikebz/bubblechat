@@ -57,22 +57,30 @@ func Repl(ctx context.Context, client gollm.Client) error {
 	return nil
 }
 
+var (
+	errorStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#cc0000"))
+	agentStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#729fcf"))
+	userStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("#d3d7cf"))
+	toolStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("#32afff"))
+	otherStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#ad7fa8"))
+)
+
 // Render formats a Block for display in the terminal.
 // It applies different styles based on the type of block (e.g., error, agent, user, tool).
 func Render(block Block) string {
-	// TODO: consider caching these styles
+
 	var lgStyle lipgloss.Style
 	switch block.Type {
 	case ErrorBlock:
-		lgStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#cc0000"))
+		lgStyle = errorStyle
 	case AgentBlock:
-		lgStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#729fcf"))
+		lgStyle = agentStyle
 	case UserBlock:
-		lgStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#d3d7cf"))
+		lgStyle = userStyle
 	case ToolBlock:
-		lgStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#32afff"))
+		lgStyle = toolStyle
 	default:
-		lgStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#ad7fa8"))
+		lgStyle = otherStyle
 	}
 
 	return lgStyle.Render(block.Text)

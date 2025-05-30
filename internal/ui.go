@@ -75,7 +75,7 @@ func Render(block Block) string {
 	case ErrorBlock:
 		lgStyle = errorStyle
 	case AgentBlock:
-		out, err := glamour.Render(block.Text, "dracula")
+		out, err := glamour.Render(block.Text, "dark")
 		if err == nil {
 			return out
 		}

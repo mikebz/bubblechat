@@ -128,20 +128,7 @@ func (doc *Document) HandleSend() {
 	doc.textInput.Reset()
 	doc.textInput.Focus()
 
-	resp, err := doc.Chat.Send(doc.Context, userInput)
-	if err != nil {
-		doc.AddBlock(Block{
-			Text: fmt.Sprintf("Error: %v", err),
-			Type: ErrorBlock,
-		})
-		return
-	}
-
-	agentResponse, _ := resp.Candidates()[0].Parts()[0].AsText()
-	doc.AddBlock(Block{
-		Text: agentResponse,
-		Type: AgentBlock,
-	})
+	doc.ChatLoop(userInput)
 }
 
 // Init initializes the text input model and returns a command to start blinking the cursor.

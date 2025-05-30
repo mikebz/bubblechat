@@ -23,6 +23,7 @@ import (
 	"github.com/GoogleCloudPlatform/kubectl-ai/gollm"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/glamour"
 	"github.com/charmbracelet/lipgloss"
 )
 
@@ -59,8 +60,8 @@ func Repl(ctx context.Context, client gollm.Client) error {
 
 var (
 	errorStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#cc0000"))
-	agentStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#729fcf"))
-	userStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("#d3d7cf"))
+	agentStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#d3d7cf"))
+	userStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("#729fcf"))
 	toolStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("#32afff"))
 	otherStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#ad7fa8"))
 )
@@ -74,6 +75,10 @@ func Render(block Block) string {
 	case ErrorBlock:
 		lgStyle = errorStyle
 	case AgentBlock:
+		out, err := glamour.Render(block.Text, "dracula")
+		if err == nil {
+			return out
+		}
 		lgStyle = agentStyle
 	case UserBlock:
 		lgStyle = userStyle

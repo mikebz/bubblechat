@@ -147,12 +147,66 @@ func (h *History) ChatLoop(query string) {
 			queue.Remove(element)
 			fnCall := element.Value.(gollm.FunctionCall)
 
-			// TODO: make the actual call
-			// assign the response to resp
-			h.AddBlock(Block{
-				Text: fmt.Sprintf("Please call: %s, %v", fnCall.Name, fnCall.Arguments),
-				Type: ToolBlock,
-			})
+			var output string
+			var err error
+
+			var cmdArgs string
+			var ok bool
+
+			// fnCall.Arguments is map[string]any as per gollm.FunctionCall definition
+			argsMap := fnCall.Arguments
+
+			switch fnCall.Name {
+			case "kubectl":
+				// Get the command string from the map
+				cmdArgs, ok = argsMap["command"].(string)
+				if !ok {
+					// If "command" key is not a string or not present
+					output = fmt.Sprintf("Error: 'command' key not found or not a string in kubectl arguments: %v", argsMap)
+					err = fmt.Errorf("invalid arguments for kubectl: missing or invalid 'command' key")
+				} else {
+					output, err = ExecuteKubectlCommand(cmdArgs)
+				}
+			case "gcloud":
+				// Get the command string from the map
+				cmdArgs, ok = argsMap["command"].(string)
+				if !ok {
+					// If "command" key is not a string or not present
+					output = fmt.Sprintf("Error: 'command' key not found or not a string in gcloud arguments: %v", argsMap)
+					err = fmt.Errorf("invalid arguments for gcloud: missing or invalid 'command' key")
+				} else {
+					output, err = ExecuteGcloudCommand(cmdArgs)
+				}
+			default:
+				output = fmt.Sprintf("Unknown tool: %s", fnCall.Name)
+				err = fmt.Errorf("unknown tool: %s", fnCall.Name)
+			}
+
+			if err != nil {
+				h.AddBlock(Block{
+					Text: fmt.Sprintf("Error executing %s: %v\nOutput: %s", fnCall.Name, err, output),
+					Type: ErrorBlock, // Or ToolBlock if preferred for tool errors
+				})
+			} else {
+				h.AddBlock(Block{
+					Text: output,
+					Type: ToolBlock,
+				})
+			}
+
+			// If the tool execution is supposed to feed back into the LLM,
+			// we might need to construct a new `gollm.Message` with the tool's output
+			// and call h.Chat.Send() again.
+			// For now, as per issue, we just add output to history.
+			// The existing loop structure seems to expect `resp` to be set if further processing is needed.
+			// Let's stick to adding to history first.
+			// If `resp` needs to be populated for further chat iterations with the tool's output,
+			// that would be:
+			// resp = gollm.NewChatResponse( /* ... parts from tool output ... */)
+			// For now, setting resp to nil to terminate the current ChatLoop iteration's tool processing.
+			// The user's request is "output needs to be captured and added to the conversation history."
+			// This doesn't explicitly state it should be sent back to the LLM as a new message *within the same turn*.
+			// The current loop structure seems to handle one set of function calls per LLM response.
 		}
 
 	}

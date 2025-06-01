@@ -17,6 +17,7 @@ import (
 	"container/list"
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/GoogleCloudPlatform/kubectl-ai/gollm"
 )
@@ -64,6 +65,28 @@ type History struct {
 	Blocks  []Block
 	Chat    gollm.Chat
 	Context context.Context
+}
+
+// NewHistory creates a new conversation history with the given chat client and context.
+func NewHistory(ctx context.Context, client gollm.Client) *History {
+	result := &History{
+		Blocks:  []Block{},
+		Context: ctx,
+	}
+
+	llmChat := gollm.NewRetryChat(
+		client.StartChat(systemPrompt, "gemini-2.0-flash"),
+		gollm.RetryConfig{
+			MaxAttempts:    3,
+			InitialBackoff: 10 * time.Second,
+			MaxBackoff:     60 * time.Second,
+			BackoffFactor:  2,
+			Jitter:         true,
+		},
+	)
+	result.Chat = llmChat
+
+	return result
 }
 
 func (h *History) AddBlock(block Block) {

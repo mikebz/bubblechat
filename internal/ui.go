@@ -88,7 +88,7 @@ type Document struct {
 }
 
 func NewDoc(context context.Context, client gollm.Client) *Document {
-	history := NewHistory(context, client)
+	history := NewHistory(context, client, "")
 	doc := &Document{
 		textInput: textinput.New(),
 	}

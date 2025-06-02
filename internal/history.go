@@ -16,6 +16,7 @@ package internal
 import (
 	"container/list"
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -68,14 +69,18 @@ type History struct {
 }
 
 // NewHistory creates a new conversation history with the given chat client and context.
-func NewHistory(ctx context.Context, client gollm.Client) *History {
+func NewHistory(ctx context.Context, client gollm.Client, model string) *History {
 	result := &History{
 		Blocks:  []Block{},
 		Context: ctx,
 	}
 
+	if model == "" {
+		model = "gemini-2.0-flash"
+	}
+
 	llmChat := gollm.NewRetryChat(
-		client.StartChat(systemPrompt, "gemini-2.0-flash"),
+		client.StartChat(systemPrompt, model),
 		gollm.RetryConfig{
 			MaxAttempts:    3,
 			InitialBackoff: 10 * time.Second,
@@ -86,11 +91,64 @@ func NewHistory(ctx context.Context, client gollm.Client) *History {
 	)
 	result.Chat = llmChat
 
+	llmChat.SetFunctionDefinitions([]*gollm.FunctionDefinition{
+		{
+			Name:        "gcloud",
+			Description: "Execute a gcloud command with current credentials and project.",
+			Parameters: &gollm.Schema{
+				Type: gollm.TypeObject,
+				Properties: map[string]*gollm.Schema{
+					"command": {
+						Type:        gollm.TypeString,
+						Description: "The gcloud command to execute.",
+					},
+				},
+				Required: []string{"command"},
+			},
+		},
+		{
+			Name:        "kubectl",
+			Description: "Execute a kubectl command with current credentials and context.",
+			Parameters: &gollm.Schema{
+				Type: gollm.TypeObject,
+				Properties: map[string]*gollm.Schema{
+					"command": {
+						Type:        gollm.TypeString,
+						Description: "The kubectl command to execute.",
+					},
+				},
+				Required: []string{"command"},
+			},
+		},
+	})
+
 	return result
 }
 
 func (h *History) AddBlock(block Block) {
 	h.Blocks = append(h.Blocks, block)
+}
+
+func (h *History) ExecuteFunctionCall(fnCall gollm.FunctionCall) (string, error) {
+	// Execute the function call based on its name
+	switch fnCall.Name {
+	case "gcloud":
+		command, ok := fnCall.Arguments["command"].(string)
+		if !ok {
+			return "", errors.New("invalid arguments for gcloud function call")
+		}
+		return ExecuteGcloudCommand(command)
+
+	case "kubectl":
+		command, ok := fnCall.Arguments["command"].(string)
+		if !ok {
+			return "", errors.New("invalid arguments for kubectl function call")
+		}
+		return ExecuteKubectlCommand(command)
+
+	default:
+		return "", fmt.Errorf("unknown function call: %s", fnCall.Name)
+	}
 }
 
 func (h *History) ChatLoop(query string) {
@@ -142,7 +200,7 @@ func (h *History) ChatLoop(query string) {
 			if success {
 				for _, fncall := range fncalls {
 					h.AddBlock(Block{
-						Text: fmt.Sprintf("Function: %s", fncall.Name),
+						Text: fmt.Sprintf("Tool: %s, command: %s", fncall.Name, fncall.Arguments["command"]),
 						Type: ToolBlock,
 					})
 					queue.PushBack(fncall)
@@ -170,12 +228,21 @@ func (h *History) ChatLoop(query string) {
 			queue.Remove(element)
 			fnCall := element.Value.(gollm.FunctionCall)
 
-			// TODO: make the actual call
-			// assign the response to resp
+			// Execute the function call
+			result, err := h.ExecuteFunctionCall(fnCall)
+			if err != nil {
+				h.AddBlock(Block{
+					Text: fmt.Sprintf("Error executing %s: %v", fnCall.Name, err),
+					Type: ErrorBlock,
+				})
+				continue
+			}
+
 			h.AddBlock(Block{
-				Text: fmt.Sprintf("Please call: %s, %v", fnCall.Name, fnCall.Arguments),
+				Text: fmt.Sprintf("%s output: %v", fnCall.Name, result),
 				Type: ToolBlock,
 			})
+			// TODO: add the result to the conversation history
 		}
 
 	}

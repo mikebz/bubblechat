@@ -95,7 +95,7 @@ func TestKubectlCall(t *testing.T) {
 		// get the first tool block
 
 		if toolBlock == nil && b.Type == ToolBlock {
-			toolBlock = &b
+			toolBlock = &h.Blocks[i]
 		}
 	}
 	assert.Contains(t, toolBlock.Text, "kubectl", "Expected tool block to contain 'kubectl get namespaces', got %s", toolBlock.Text)

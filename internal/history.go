@@ -238,11 +238,20 @@ func (h *History) ChatLoop(query string) {
 				continue
 			}
 
-			h.AddBlock(Block{
-				Text: fmt.Sprintf("%s output: %v", fnCall.Name, result),
-				Type: ToolBlock,
-			})
-			// TODO: add the result to the conversation history
+			fnResult := gollm.FunctionCallResult{
+				ID:     fnCall.ID,
+				Name:   fnCall.Name,
+				Result: map[string]any{"output": result},
+			}
+
+			resp, err = h.Chat.Send(h.Context, fnResult)
+			if err != nil {
+				h.AddBlock(Block{
+					Text: fmt.Sprintf("Error: %v", err),
+					Type: ErrorBlock,
+				})
+				return
+			}
 		}
 
 	}

@@ -3,7 +3,6 @@ package internal
 import (
 	"os"
 	"testing"
-	"time"
 
 	"github.com/GoogleCloudPlatform/kubectl-ai/gollm"
 	"github.com/joho/godotenv"
@@ -11,13 +10,10 @@ import (
 )
 
 // setup that initializes a gollm.Chat client for integration tests.
-func setup(t *testing.T, provider, model string) gollm.Chat {
+func setup(t *testing.T, provider, model string) *History {
 	t.Helper()
 	if provider == "" {
 		provider = "gemini"
-	}
-	if model == "" {
-		model = "gemini-2.0-flash"
 	}
 	err := godotenv.Load("../.env")
 	if err != nil {
@@ -34,28 +30,14 @@ func setup(t *testing.T, provider, model string) gollm.Chat {
 		t.Fatalf("Failed to create LLM client: %v.", err)
 	}
 
-	llmChat := gollm.NewRetryChat(
-		client.StartChat(systemPrompt, model),
-		gollm.RetryConfig{
-			MaxAttempts:    3,
-			InitialBackoff: 10 * time.Second,
-			MaxBackoff:     60 * time.Second,
-			BackoffFactor:  2,
-			Jitter:         true,
-		},
-	)
-	return llmChat
+	h := NewHistory(t.Context(), client, model)
+	return h
 }
 
 // TestChatLoop does the basic test with a simple query
 // expecting a text response without function calls.
 func TestChatLoop(t *testing.T) {
-	chat := setup(t, "", "")
-	h := &History{
-		Chat:    chat,
-		Context: t.Context(), // h.Context is set using t.Context()
-		Blocks:  []Block{},
-	}
+	h := setup(t, "", "")
 
 	// A query designed to elicit a simple text response without function calls.
 	query := "Hello, this is a test query. Please provide a short text response without using any tools or functions."
@@ -78,12 +60,7 @@ func TestChatLoop(t *testing.T) {
 // block generated is of type ErrorBlock, indicating that the error was
 // captured and recorded appropriately.
 func TestErrorChatLoop(t *testing.T) {
-	chat := setup(t, "gemini", "gemini-2.0-foobar")
-	h := &History{
-		Chat:    chat,
-		Context: t.Context(), // h.Context is set using t.Context()
-		Blocks:  []Block{},
-	}
+	h := setup(t, "gemini", "gemini-2.0-foobar")
 	query := ""
 	h.ChatLoop(query)
 	if len(h.Blocks) == 0 {
@@ -95,4 +72,31 @@ func TestErrorChatLoop(t *testing.T) {
 	}
 	firstBlock := h.Blocks[0]
 	assert.Equal(t, ErrorBlock, firstBlock.Type, "Expected first block to be an ErrorBlock, got %s", firstBlock.Type)
+}
+
+// TestKubectlCall tests the ChatLoop method with a query that is expected
+// to trigger a kubectl command execution. It sets up a History with a
+// valid chat configuration and a query that requests the namespaces in the cluster.
+func TestKubectlCall(t *testing.T) {
+	h := setup(t, "", "")
+
+	// A query designed to elicit a simple text response without function calls.
+	query := "Please get the namespaces on my cluster"
+	h.ChatLoop(query)
+	if len(h.Blocks) == 0 {
+		t.Fatalf("Expected at least one block after ChatLoop, got 0.")
+	}
+	t.Logf("ChatLoop resulted in %d block(s):", len(h.Blocks))
+
+	// get the tool block
+	var toolBlock *Block
+	for i, b := range h.Blocks {
+		t.Logf("Block %d: %q", i, b.String())
+		// get the first tool block
+
+		if toolBlock == nil && b.Type == ToolBlock {
+			toolBlock = &h.Blocks[i]
+		}
+	}
+	assert.Contains(t, toolBlock.Text, "kubectl", "Expected tool block to contain 'kubectl get namespaces', got %s", toolBlock.Text)
 }

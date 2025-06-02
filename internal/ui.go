@@ -18,7 +18,6 @@ import (
 	_ "embed"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/GoogleCloudPlatform/kubectl-ai/gollm"
 	"github.com/charmbracelet/bubbles/textinput"
@@ -36,18 +35,8 @@ var systemPrompt string
 // It's expected that outside of initializing the client you will not need to do
 // anything to have an interactive session.
 func Repl(ctx context.Context, client gollm.Client) error {
-	llmChat := gollm.NewRetryChat(
-		client.StartChat(systemPrompt, "gemini-2.0-flash"),
-		gollm.RetryConfig{
-			MaxAttempts:    3,
-			InitialBackoff: 10 * time.Second,
-			MaxBackoff:     60 * time.Second,
-			BackoffFactor:  2,
-			Jitter:         true,
-		},
-	)
 
-	doc := NewDoc(ctx, llmChat)
+	doc := NewDoc(ctx, client)
 
 	p := tea.NewProgram(doc)
 	if _, err := p.Run(); err != nil {
@@ -98,17 +87,13 @@ type Document struct {
 	textInput textinput.Model
 }
 
-func NewDoc(context context.Context, chat gollm.Chat) *Document {
+func NewDoc(context context.Context, client gollm.Client) *Document {
+	history := NewHistory(context, client, "")
 	doc := &Document{
-		History: History{
-			Blocks:  []Block{},
-			Chat:    chat,
-			Context: context,
-		},
 		textInput: textinput.New(),
 	}
 	doc.textInput.Focus()
-
+	doc.History = *history
 	doc.AddBlock(Block{
 		Text: "Welcome to BubbleChat! Type your message below:",
 		Type: AgentBlock,
